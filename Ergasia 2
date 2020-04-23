@@ -1,1 +1,159 @@
 
+1)
+
+/* shows listings by criteria the number of max nights must be more than 5 an the min nights must be 
+between 2 and 4. The listings are ordered from the one with the most nights you can stay to the one with the least*
+
+SELECT "Listings".id, "Listings".minimum_nights,  "Listings".maximum_nights
+FROM "Listings" 
+WHERE  "Listings".maximum_nights > 5 AND "Listings".minimum_nights BETWEEN 2 AND 4
+ORDER BY "Listings".maximum_nights DESC;
+
+Rows 5860
+
+2)
+
+/* βρες listing_id,host_url,experiences_offered,date,
+διαθεσιμότητα, beds,bathrooms, room_type, όπου η διαθεσιμότητα είναι true.
+output: 1200 rows
+*/
+
+SELECT "Calendar".listing_id,"Listings".host_url, "Listings".experiences_offered, "Calendar".date,
+"Calendar".available, "Listings".beds, "Listings".bathrooms, "Listings".room_type
+FROM calendar
+INNER JOIN listings ON calendar.listing_id = listings.id
+WHERE calendar.available = 't'
+LIMIT 1200
+
+3)
+
+/* βρες τα διαμερίσματα, με τις τιμές, καθώς και τα ελάχιστα βράδια να είναι μικρότερα ή ισα του 3,
+και ταξινομημένα σε φθίνουσα σειρά βάση του security deposit.
+*/
+
+SELECT "Listings_summary".name, "Listings_summary".price, "Listings_summary".minimum_nights,
+"Listings".security_Deposit
+FROM "Listings_summary"
+INNER JOIN "Listings" ON "Listings".id = "Listings_summary".id
+WHERE "Listings_summary".minimum_nights <= 3
+ORDER BY "Listings".security_Deposit DESC
+
+4)
+
+/* βρες το ονομα του host, το url, το σκορ των review, καθώς και τα reviews κάθε μήνα, ταξινομημένα 
+βάση του σκόρ σε αύξουσα σειρά
+output: 9663 rows
+*/
+
+
+SELECT "Listings".host_name,"Listings".host_url, "Listings".review_scores_rating,
+"Listings_summary".reviews_per_month
+FROM "Listings_summary"
+INNER JOIN "Listings" ON "Listings".id = "Listings_summary".id
+ORDER BY "Listings".review_scores_rating ASC
+
+5)
+
+/* βρες τις 200 καταγραφές με το όνομα του κριτή, τα σχόλια του, το url του σπιτιου που έμεινε
+*/
+
+SELECT "Reviews".listing_id, "Reviews".reviewer_name, "Reviews".comments,
+"Listings".listing_url
+FROM "Reviews"
+INNER JOIN "Listings" ON "Listings".id = "Reviews".listing_id
+LIMIT 200
+
+
+
+6)
+
+/* Βρες τις 200 καταγραφές μονο στα διαθέσιμα διαμερισματα, τα ονοματα αυτων που ενοικιαζουν,
+ την περιοχή, με ταξινόμηση τιμής κατά αύξουσα σειρά και να είναι μικρότερη ή ιση των $100 
+output: 200 rowς
+*/
+
+SELECT "Listings".host_name, "Listings".neighbourhood, "Calendar".available, 
+"Calendar".price
+FROM "Calendar"
+INNER JOIN "Listings" ON "Listings".id = "Calendar".listing_id
+WHERE "Calendar".available = 't' and "Calendar".price <= '$100.00'
+ORDER BY "Calendar".price ASC
+LIMIT 200
+
+7)
+/* Βρες ολα τα ενοικιαζόμενα, το URL τους, τους κανόνες του σπιτίου για τις 
+ημερομηνίες μεταξυ του 2017-12-20 και 2017-12-25, ταξινομημένα βάση τιμής
+σε αύξουσα σειρά
+output: 57978 rows
+*/
+
+SELECT "Calendar".listing_id, "Listings".listing_url, "Calendar".price, "Calendar".date,
+"Listings".house_rules
+FROM "Listings"
+INNER JOIN "Calendar" ON "Calendar".listing_id = "Listings".id
+WHERE "Calendar".date BETWEEN '2017-12-20'AND '2017-12-25'
+ORDER BY "Calendar".price ASC;
+
+8)
+/*
+Δείξε σε ποιές γειτονιές υπάρχουν airbnb διαμερίσματα
+*/
+
+SELECT "Neighbourhoods".neighbourhood 
+FROM	("Neighbourhoods" FULL OUTER JOIN  "Listings" ON "Listings".neighbourhood_cleansed = "Neighbourhoods".neighbourhood)
+GROUP BY "Neighbourhoods".neighbourhood 
+
+OUTPUT : 45 ROWS
+
+9)
+
+/*
+Κανε sort με την βοήθεια των Calendar Και Listings table με βαση την τιμη και την διαθεσιμοτητα
+OUTPUT:250 ROWS
+*/
+SELECT DISTINCT "Calendar".* , "Listings".city
+FROM "Calendar"
+FULL OUTER JOIN "Listings" ON  "Listings".id = "Calendar".listing_id
+ORDER BY "Calendar".available,  "Calendar".price
+LIMIT 250;
+
+10)
+
+/* Υπολογιζει την διαφορά που σε μεσο ορο παντα των διαθέσιμων ανα 90 μέρες των διαμερισμάτων
+Output:2
+*/
+
+SELECT "foo".agv - "foo".nim as Diafora_me_Min , "foo".dog - "foo".agv as Diafora_me_max 
+FROM (
+SELECT AVG("Listings".availability_90) AS agv, MIN ("Listings".availability_90) as nim , MAX ("Listings".availability_90) as dog
+FROM "Listings" ) as foo
+
+11)
+/* Βρες τα σχόλια και τα ονόματα των επισκεπτών για τον μήνα Μάρτη, καθώς και το "όνομα"
+του σπιτιού.
+output:203 rows
+*/
+
+SELECT "Reviews".reviewer_name, "Reviews".comments, "Calendar".date, "Listings".name
+FROM "Calendar", "reviews"
+INNER JOIN "Listings" ON "Listings".id = "Reviews".id
+WHERE "Listings".id = "Calendar".listing_id
+and "Calendar".date BETWEEN '2017-03-1'AND '2017-03-31'
+
+12)
+
+
+
+/*
+Μετρα τα reviews που εχουν τις λεξεις bad και good και ποσες φορες περιεχονται 
+
+*/
+
+
+
+SELECT Count("Reviews".comments), "Reviews".listing_id 
+FROM "Reviews"
+WHERE comments LIKE '%bad%' OR comments LIKE '%good%'
+Group by ("Reviews".listing_id)
+
+OUTPUT:6519
