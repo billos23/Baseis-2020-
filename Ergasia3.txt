@@ -1,0 +1,207 @@
+1)
+
+
+CREATE TABLE Host
+  AS (SELECT DISTINCT host_id as id, host_url as url, host_name as name, host_since AS since , host_location AS location,
+	  host_about as about, host_response_time as time, host_response_rate as response_rate, host_acceptance_rate as acceptance_rate,
+	  host_is_superhost as is_superhost,
+	  host_thumbnail_url as thumbnail_url , host_picture_url as picture_url , host_neighbourhood as neighbourhood,
+	  host_listings_count as listings_count , host_total_listings_count as total_listings_count,
+	  host_verifications as verifications , host_has_profile_pic as has_profile_pic , host_identity_verified as identity_verified , 
+	  calculated_host_listings_count
+	 FROM "Listings");
+
+ ALTER TABLE "host" 
+  ADD PRIMARY KEY (id);
+
+
+  ALTER TABLE "Listings" 
+  ADD FOREIGN  KEY (host_id) REFERENCES Host(id);
+
+
+ ALTER TABLE "Listings" 
+  DROP COLUMN host_url,
+  DROP COLUMN host_name,
+  DROP COLUMN host_since,
+  DROP COLUMN host_location,
+  DROP COLUMN host_about,
+  DROP COLUMN host_response_time,
+  DROP COLUMN host_response_rate,
+  DROP COLUMN host_acceptance_rate,
+  DROP COLUMN host_is_superhost,
+  DROP COLUMN host_thumbnail_url,
+  DROP COLUMN host_picture_url,
+  DROP COLUMN host_neighbourhood,
+  DROP COLUMN host_listings_count,
+  DROP COLUMN host_total_listings_count,
+  DROP COLUMN host_verifications,
+  DROP COLUMN host_has_profile_pic,
+  DROP COLUMN host_identity_verified,
+  DROP COLUMN calculated_host_listings_count;
+
+
+
+
+2) CREATE TABLE Room
+AS ( SELECT id as listing_id , accommodates , bathrooms , bedrooms , beds, bed_type , amenities , square_feet , price , weekly_price , monthly_price , security_deposit 
+FROM "Listings");
+
+
+ALTER TABLE "Room"
+ADD FOREIGN KEY (listing_id) REFERENCES "Listings"(id)
+
+
+
+ALTER TABLE "Listings"
+DROP COLUMN accommodates,
+DROP COLUMN bathrooms,
+DROP COLUMN bedrooms, 
+DROP COLUMN beds,
+DROP COLUMN bed_type,
+DROP COLUMN amenities,
+DROP COLUMN square_feet;
+
+
+3)
+
+
+Create Table Price
+AS ( SELECT id as listing_id ,price, weekly_price, monthly_price, security_deposit, cleaning_fee,
+guests_included, extra_people, minimum_nights, maximum_nights,
+minimum_minimum_nights, maximum_minimum_nights, minimum_maximum_nights,
+maximum_maximum_nights, minimum_nights_avg_ntm, maximum_nights_avg_ntm
+FROM "Listings");
+
+
+
+ALTER TABLE "Price"
+ADD FOREIGN KEY (listing_id) REFERENCES "Listings"(id)
+
+
+ALTER TABLE "Price"
+ALTER COLUMN price TYPE numeric USING price::numeric;
+ALTER COLUMN weekly_price TYPE numeric  USING weekly_price::numeric,
+ALTER COLUMN monthly_price TYPE numeric  USING monthly_price::numeric,
+ALTER COLUMN security_deposit TYPE numeric  USING security_deposit::numeric,
+ALTER COLUMN cleaning_fee TYPE numeric  USING cleaning_fee::numeric,
+ALTER COLUMN extra_people TYPE numeric  USING extra_people::numeric;
+ALTER COLUMN minimum_nights_avg_ntm TYPE numeric  USING minimum_nights_avg_ntm::numeric,
+ALTER COLUMN maximum_nights_avg_ntm TYPE numeric USING maximum_nights_avg_ntm::numeric;
+
+
+ALTER TABLE "Listings"
+DROP COLUMN price,
+DROP COLUMN weekly_price,
+DROP COLUMN monthly_price,
+DROP COLUMN security_deposit,
+DROP COLUMN cleaning_fee,
+DROP COLUMN guests_included,
+DROP COLUMN extra_people,
+DROP COLUMN minimum_nights,
+DROP COLUMN maximum_nights,
+DROP COLUMN minimum_minimum_nights,
+DROP COLUMN maximum_minimum_nights,
+DROP COLUMN minimum_maximum_nights,
+DROP COLUMN maximum_maximum_nights,
+DROP COLUMN minimum_nights_avg_ntm,
+DROP COLUMN maximum_nights_avg_ntm;
+
+
+
+
+
+
+4)
+
+
+CREATE TABLE location
+AS ( SELECT id as listing_id ,street, neighbourhood, neighbourhood_cleansed, city, state,
+zipcode, market, smart_location, country_code, country, latitude, longitude,is_location_exact
+from "Listings");
+
+
+
+
+ALTER TABLE "Location"
+ADD FOREIGN KEY (listing_id) REFERENCES "Listings"(id)
+
+
+/*
+Κανονικά ολα τα πεδια στο Neighbourhood ειναι στα ελληνικα και στο location einai sta greeklish me apotelesma na prepei na valw ola ta pedia pali sta greeklish ετσι ωστε να μην βγαλει ερρορ
+*/
+
+INSERT INTO "Neighbourhood"(neighbourhood)
+VALUES('Rouf');
+
+
+
+ALTER TABLE "Location"
+ADD FOREIGN KEY (neighbourhood) REFERENCES "Neighbourhood"(neighbourhood);
+
+
+
+
+ALTER TABLE "Listings"
+DROP COLUMN street,
+DROP COLUMN neighbourhood,
+DROP COLUMN neighbourhood_cleansed,
+DROP COLUMN city,
+DROP COLUMN state,
+DROP COLUMN zipcode,
+DROP COLUMN market,
+DROP COLUMN smart_location,
+DROP COLUMN country_code,
+DROP COLUMN country,
+DROP COLUMN latitude,
+DROP COLUMN longitude,
+DROP COLUMN is_location_exact;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+5)
+
+
+ ALTER TABLE "Calendar"
+ALTER COLUMN available TYPE boolean;
+ALTER COLUMN price TYPE money USING price::money,
+ALTER COLUMN adjusted_price TYPE money USING price::money;
+
+
+
+
+
+
+
+
+6)
+
+
+
+ALTER TABLE "Listings"
+RENAME TO Listing;
+
+ALTER TABLE "Listings_summary"
+RENAME TO Listing_summary;
+
+ALTER TABLE "Neighbourhoods"
+RENAME TO Neighbourhood;
+
+ALTER TABLE "Reviews"
+RENAME TO Review;
+
+ALTER TABLE "Reviews_summary"
+RENAME TO Review_summary;
