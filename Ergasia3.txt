@@ -126,17 +126,10 @@ ALTER TABLE "Location"
 ADD FOREIGN KEY (listing_id) REFERENCES "Listings"(id)
 
 
-/*
-Κανονικά ολα τα πεδια στο Neighbourhood ειναι στα ελληνικα και στο location einai sta greeklish me apotelesma na prepei na valw ola ta pedia pali sta greeklish ετσι ωστε να μην βγαλει ερρορ
-*/
-
-INSERT INTO "Neighbourhood"(neighbourhood)
-VALUES('Rouf');
-
 
 
 ALTER TABLE "Location"
-ADD FOREIGN KEY (neighbourhood) REFERENCES "Neighbourhood"(neighbourhood);
+ADD FOREIGN KEY (neighbourhood_cleansed) REFERENCES "Neighbourhood"(neighbourhood);
 
 
 
@@ -177,8 +170,8 @@ DROP COLUMN is_location_exact;
 
  ALTER TABLE "Calendar"
 ALTER COLUMN available TYPE boolean;
-ALTER COLUMN price TYPE money USING price::money,
-ALTER COLUMN adjusted_price TYPE money USING price::money;
+ALTER COLUMN price TYPE numeric USING price::numeric,
+ALTER COLUMN adjusted_price TYPE numeric USING adjusted_price::numeric;
 
 
 
