@@ -77,6 +77,16 @@ FROM "Listings");
 ALTER TABLE "Price"
 ADD FOREIGN KEY (listing_id) REFERENCES "Listings"(id)
 
+ALTER TABLE "Price"
+ALTER COLUMN price TYPE money USING price::money;
+ALTER COLUMN weekly_price TYPE money  USING weekly_price::money,
+ALTER COLUMN monthly_price TYPE money  USING monthly_price::money,
+ALTER COLUMN security_deposit TYPE money  USING security_deposit::money,
+ALTER COLUMN cleaning_fee TYPE money  USING cleaning_fee::money,
+ALTER COLUMN extra_people TYPE money  USING extra_people::money;
+ALTER COLUMN minimum_nights_avg_ntm TYPE money  USING minimum_nights_avg_ntm::money,
+ALTER COLUMN maximum_nights_avg_ntm TYPE money USING maximum_nights_avg_ntm::money;
+
 
 ALTER TABLE "Price"
 ALTER COLUMN price TYPE numeric USING price::numeric;
