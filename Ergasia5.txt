@@ -45,3 +45,54 @@ ADD FOREIGN KEY (listing_id) REFERENCES "Room"(listing_id);
 
 ALTER TABLE "Room"
 DROP COLUMN amenities;
+
+---------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+/* 
+Find room.listing_id, Available Bathrooms, Available Bedrooms,Listing URL
+group by listing.listing_url, room.listing_id, where bedroom and bathrooms are more that 1
+Successfully run. Total query runtime: 886 msec.
+1864 rows affected.
+*/
+SELECT room.listing_id, room.bathrooms AS "Available Bathrooms", room.bedrooms AS "Available Bedrooms", listing.listing_url AS "Below lays the Listing URL"
+FROM room
+INNER JOIN listing
+ON listing.id = room.listing_id
+group by listing.listing_url, room.listing_id
+having room.bathrooms > '1.0' AND room.bedrooms > '1'
+
+
+/*Find host id with his listing id, where there is availability in athens,attica,greece
+
+Successfully run. Total query runtime: 1 secs 278 msec.
+2551 rows affected. */
+
+SELECT host.location, host.id, host.url, listing.has_availability
+FROM host
+INNER JOIN listing
+ON host.id = listing.host_id
+WHERE listing.has_availability = 'y' and host.location = 'Athens, Attica, Greece'
+
+
+
+
+select location.is_location_exact, location.listing_id, geolocation.properties_neighbourhood, location.latitude, location.longitude, location.street
+from location
+INNER JOIN geolocation on geolocation.properties_neighbourhood = location.neighbourhood_cleansed
+where location.is_location_exact = 'true'
+
+
+SELECT price.listing_id, price.price, listing.space, listing.instant_bookable
+from price
+full outer join listing ON listing.id = price.listing_id
+WHERE listing.instant_bookable = 'true' and price.price <= '110.00'
+limit 100
+
+
+SELECT location.neighbourhood, Location.city, Location.is_location_exact
+FROM location
+FULL OUTER JOIN neighbourhood ON location.neighbourhood= neighbourhood.neighbourhood
+WHERE location.city='Athens' AND Location.is_location_exact= false
+GROUP BY location.neighbourhood,location.city, Location.is_location_exact;
