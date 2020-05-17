@@ -1,0 +1,47 @@
+create table "Amenity"(
+amenity_id serial primary key,
+amenity_name varchar(255)
+);
+
+
+update "Room"
+set amenities = replace(amenities,'{','');
+
+
+
+update "Room"
+set amenities= replace(amenities,'}','');
+
+
+
+update "Room"
+set amenities = replace(amenities,'"','');
+
+
+
+insert into "Amenity"(amenity_name)
+SELECT DISTINCT regexp_split_to_table(amenities, ',') 
+FROM "Room";
+
+
+ALTER TABLE "Room"
+ADD PRIMARY KEY (listing_id);
+
+
+CREATE TABLE Amenity_connection
+AS(SELECT amenity_id,listing_id
+  FROM "Amenity","Room");
+
+
+ALTER TABLE "Amenity_Connection"
+ADD FOREIGN KEY (amenity_id) REFERENCES "Amenity"(amenity_id);	
+
+
+
+ALTER TABLE "Amenity_Connection"
+ADD FOREIGN KEY (listing_id) REFERENCES "Room"(listing_id);	
+
+
+
+ALTER TABLE "Room"
+DROP COLUMN amenities;
