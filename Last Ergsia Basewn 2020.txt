@@ -1,0 +1,326 @@
+CREATE FUNCTION update_host_total_listings()
+  RETURNS trigger AS
+'BEGIN
+IF TG_OP = ''DELETE'' THEN
+ UPDATE Host SET total_listing_count = total_listing_count - 1
+ WHERE id = OLD.host_id;
+ RETURN OLD;
+ELSIF TG_OP = ''INSERT'' THEN
+ UPDATE Host SET total_listing_count = total_listing_count + 1
+ WHERE id = OLD.host_id;
+ RETURN NEW;
+END IF;
+END;
+'LANGUAGE plpgsql;
+
+CREATE TRIGGER numbReviews AFTER DELETE OR INSERT ON listing
+FOR EACH ROW
+EXECUTE PROCEDURE update_host_total_listings();
+
+
+
+
+--------------------------------------------------------------------------------------------
+Οταν προστιθεται η διαγραφεται μια αλλαγη στον review να ενημερωνεται ο 	number of reviews στον listing
+
+CREATE FUNCTION decrease_total_reviews()
+	RETURNS trigger AS
+'BEGIN
+UPDATE listing 
+SET number_of_reviews = number_of_reviews - 1
+WHERE id = OLD.listing_id;
+RETURN OLD;
+END;
+'
+LANGUAGE plpgsql;
+
+CREATE FUNCTION increase_total_reviews()
+	RETURNS trigger AS
+'BEGIN
+UPDATE listing 
+SET number_of_reviews = number_of_reviews + 1
+WHERE id = NEW.listing_id;
+RETURN NEW;
+END;
+'
+LANGUAGE plpgsql;
+
+
+CREATE TRIGGER deleteReviewTrigger AFTER DELETE ON review
+FOR EACH ROW
+EXECUTE PROCEDURE decrease_total_reviews();
+
+
+CREATE TRIGGER insertReviewTrigger AFTER INSERT ON review
+FOR EACH ROW
+EXECUTE PROCEDURE increase_total_reviews();
+
+
+
+
+
+
+
+
+
+
+---------------------------------------------------------------------
+
+EXPLAIN ANALYZE
+SELECT "Host".id, COUNT(*) FROM "Listing", "Host" WHERE
+"Host".id="Listing".host_id GROUP BY "Host".id;
+
+
+"HashAggregate  (cost=3636.60..3700.23 rows=6363 width=12) (actual time=630.690..632.721 rows=6363 loops=1)"
+"  Group Key: "Host".id"
+"  ->  Hash Join  (cost=618.17..3578.89 rows=11541 width=4) (actual time=90.231..623.678 rows=11541 loops=1)"
+"        Hash Cond: ("Listing".host_id = "Host".id)"
+"        ->  Seq Scan on "Listing"  (cost=0.00..2930.41 rows=11541 width=4) (actual time=2.782..527.343 rows=11541 loops=1)"
+"        ->  Hash  (cost=538.63..538.63 rows=6363 width=4) (actual time=87.388..87.389 rows=6363 loops=1)"
+"              Buckets: 8192  Batches: 1  Memory Usage: 288kB"
+"              ->  Seq Scan on "Host"  (cost=0.00..538.63 rows=6363 width=4) (actual time=0.006..84.428 rows=6363 loops=1)"
+"Planning Time: 10.234 ms"
+"Execution Time: 634.040 ms"
+
+
+
+CREATE INDEX IX_FIND_ID_FOR_LISTING
+ON "Listing"
+(id);
+
+"HashAggregate  (cost=3636.60..3700.23 rows=6363 width=12) (actual time=24.819..26.674 rows=6363 loops=1)"
+"  Group Key: "Host".id"
+"  ->  Hash Join  (cost=618.17..3578.89 rows=11541 width=4) (actual time=4.046..20.396 rows=11541 loops=1)"
+"        Hash Cond: ("Listing".host_id = "Host".id)"
+"        ->  Seq Scan on "Listing"  (cost=0.00..2930.41 rows=11541 width=4) (actual time=0.007..10.440 rows=11541 loops=1)"
+"        ->  Hash  (cost=538.63..538.63 rows=6363 width=4) (actual time=4.004..4.004 rows=6363 loops=1)"
+"              Buckets: 8192  Batches: 1  Memory Usage: 288kB"
+"              ->  Seq Scan on "Host"  (cost=0.00..538.63 rows=6363 width=4) (actual time=0.002..2.161 rows=6363 loops=1)"
+"Planning Time: 0.187 ms"
+"Execution Time: 27.944 ms"
+
+
+Query :Without 634.040ms With 27.944ms
+
+
+
+
+
+
+
+
+EXPLAIN ANALYZE
+SELECT id, price FROM "Listing", "Price" WHERE guests_included > 5
+AND price > 40;
+
+
+
+
+
+"Nested Loop  (cost=0.00..7052.44 rows=311607 width=40) (actual time=0.716..1545.117 rows=2469774 loops=1)"
+"  ->  Seq Scan on "Listing"  (cost=0.00..2930.41 rows=11541 width=8) (actual time=0.008..6.630 rows=11541 loops=1)"
+"  ->  Materialize  (cost=0.00..227.01 rows=27 width=32) (actual time=0.000..0.047 rows=214 loops=11541)"
+"        ->  Seq Scan on "Price"  (cost=0.00..226.88 rows=27 width=32) (actual time=0.703..34.485 rows=214 loops=1)"
+"              Filter: ((guests_included > 5) AND (price > '40'::numeric))"
+"              Rows Removed by Filter: 11327"
+"Planning Time: 1.996 ms"
+"Execution Time: 1993.068 ms"
+
+CREATE INDEX FIND_PRICE
+ON "Price"(price,guests_included);
+
+"Nested Loop  (cost=102.77..13842.63 rows=854034 width=40) (actual time=1.316..1500.466 rows=2469774 loops=1)"
+"  ->  Seq Scan on "Listing"  (cost=0.00..2930.41 rows=11541 width=8) (actual time=0.004..7.280 rows=11541 loops=1)"
+"  ->  Materialize  (cost=102.77..236.98 rows=74 width=32) (actual time=0.000..0.044 rows=214 loops=11541)"
+"        ->  Bitmap Heap Scan on "Price"  (cost=102.77..236.61 rows=74 width=32) (actual time=1.307..1.489 rows=214 loops=1)"
+"              Recheck Cond: ((price > '40'::numeric) AND (guests_included > 5))"
+"              Heap Blocks: exact=114"
+"              ->  Bitmap Index Scan on find_price  (cost=0.00..102.75 rows=74 width=0) (actual time=1.290..1.290 rows=214 loops=1)"
+"                    Index Cond: ((price > '40'::numeric) AND (guests_included > 5))"
+"Planning Time: 0.217 ms"
+"Execution Time: 1968.934 ms"
+
+/* Query 2: w/out index:1993.068  ms; w/index:1968.934ms */
+
+
+
+-----------------------------------------------------------------------------------------------------------------------
+
+1) /* Query 3: w/out index:45.079  ms; w/index:40.306 ms */
+
+SELECT "Room".listing_id, "Room".bathrooms AS "Available Bathrooms", "Room".bedrooms AS "Available Bedrooms", "Listing".listing_url AS "Below lays the Listing URL"
+FROM "Room"
+INNER JOIN "Listing"
+ON "Listing".id = "Room".listing_id
+group by "Listing".listing_url, "Room".listing_id
+having "Room".bathrooms > '1.0' AND "Room".bedrooms > '1'
+
+
+
+"Group  (cost=4483.98..4491.35 rows=983 width=53) (actual time=43.328..44.697 rows=1864 loops=1)"
+"  Group Key: "Listing".listing_url, "Room".listing_id"
+"  ->  Sort  (cost=4483.98..4486.44 rows=983 width=53) (actual time=43.323..43.711 rows=1864 loops=1)"
+"        Sort Key: "Listing".listing_url, "Room".listing_id"
+"        Sort Method: quicksort  Memory: 311kB"
+"        ->  Hash Join  (cost=1474.40..4435.12 rows=983 width=53) (actual time=4.175..12.734 rows=1864 loops=1)"
+"              Hash Cond: (("Listing".id)::text = ("Room".listing_id)::text)"
+"              ->  Seq Scan on "Listing"  (cost=0.00..2930.41 rows=11541 width=45) (actual time=0.006..5.016 rows=11541 loops=1)"
+"              ->  Hash  (cost=1462.12..1462.12 rows=983 width=16) (actual time=4.160..4.161 rows=1864 loops=1)"
+"                    Buckets: 2048 (originally 1024)  Batches: 1 (originally 1)  Memory Usage: 111kB"
+"                    ->  Seq Scan on "Room"  (cost=0.00..1462.12 rows=983 width=16) (actual time=0.009..3.464 rows=1864 loops=1)"
+"                          Filter: (((bathrooms)::text > '1.0'::text) AND (bedrooms > 1))"
+"                          Rows Removed by Filter: 9677"
+"Planning Time: 0.289 ms"
+"Execution Time: 45.079 ms"
+
+
+CREATE INDEX IX_FIND_ID_FOR_LISTING
+ON "Listing"
+(id);
+
+
+"Group  (cost=4483.98..4491.35 rows=983 width=53) (actual time=38.587..39.927 rows=1864 loops=1)"
+"  Group Key: "Listing".listing_url, "Room".listing_id"
+"  ->  Sort  (cost=4483.98..4486.44 rows=983 width=53) (actual time=38.583..38.958 rows=1864 loops=1)"
+"        Sort Key: "Listing".listing_url, "Room".listing_id"
+"        Sort Method: quicksort  Memory: 311kB"
+"        ->  Hash Join  (cost=1474.40..4435.12 rows=983 width=53) (actual time=4.228..12.963 rows=1864 loops=1)"
+"              Hash Cond: (("Listing".id)::text = ("Room".listing_id)::text)"
+"              ->  Seq Scan on "Listing"  (cost=0.00..2930.41 rows=11541 width=45) (actual time=0.007..5.163 rows=11541 loops=1)"
+"              ->  Hash  (cost=1462.12..1462.12 rows=983 width=16) (actual time=4.213..4.214 rows=1864 loops=1)"
+"                    Buckets: 2048 (originally 1024)  Batches: 1 (originally 1)  Memory Usage: 111kB"
+"                    ->  Seq Scan on "Room"  (cost=0.00..1462.12 rows=983 width=16) (actual time=0.009..3.511 rows=1864 loops=1)"
+"                          Filter: (((bathrooms)::text > '1.0'::text) AND (bedrooms > 1))"
+"                          Rows Removed by Filter: 9677"
+"Planning Time: 1.015 ms"
+"Execution Time: 40.306 ms"
+
+
+
+2) * Query 4: w/out index:21.141  ms; w/index:19.981 ms *
+
+
+"Hash Join  (cost=570.59..3531.31 rows=2329 width=63) (actual time=2.419..20.616 rows=2551 loops=1)"
+"  Hash Cond: ("Listing".host_id = "Host".id)"
+"  ->  Seq Scan on "Listing"  (cost=0.00..2930.41 rows=11541 width=5) (actual time=0.009..14.547 rows=11541 loops=1)"
+"        Filter: has_availability"
+"  ->  Hash  (cost=554.54..554.54 rows=1284 width=62) (actual time=2.401..2.401 rows=1284 loops=1)"
+"        Buckets: 2048  Batches: 1  Memory Usage: 145kB"
+"        ->  Seq Scan on "Host"  (cost=0.00..554.54 rows=1284 width=62) (actual time=0.003..1.929 rows=1284 loops=1)"
+"              Filter: ((location)::text = 'Athens, Attica, Greece'::text)"
+"              Rows Removed by Filter: 5079"
+"Planning Time: 3.550 ms"
+"Execution Time: 21.141 ms"
+
+
+Create index Find_host_id
+ON "Host"(id);
+
+
+"Hash Join  (cost=570.59..3531.31 rows=2329 width=63) (actual time=2.055..19.468 rows=2551 loops=1)"
+"  Hash Cond: ("Listing".host_id = "Host".id)"
+"  ->  Seq Scan on "Listing"  (cost=0.00..2930.41 rows=11541 width=5) (actual time=0.009..13.747 rows=11541 loops=1)"
+"        Filter: has_availability"
+"  ->  Hash  (cost=554.54..554.54 rows=1284 width=62) (actual time=2.039..2.039 rows=1284 loops=1)"
+"        Buckets: 2048  Batches: 1  Memory Usage: 145kB"
+"        ->  Seq Scan on "Host"  (cost=0.00..554.54 rows=1284 width=62) (actual time=0.003..1.607 rows=1284 loops=1)"
+"              Filter: ((location)::text = 'Athens, Attica, Greece'::text)"
+"              Rows Removed by Filter: 5079"
+"Planning Time: 0.955 ms"
+"Execution Time: 19.981 ms"
+
+
+
+
+
+3)Query 5 without:53.729ms With: 11.549ms
+
+"Hash Join  (cost=10.01..402.79 rows=49 width=139) (actual time=0.741..51.834 rows=9834 loops=1)"
+"  Hash Cond: (("Location".neighbourhood_cleansed)::text = ("Geolocation".properties_neighbourhood)::text)"
+"  ->  Seq Scan on "Location"  (cost=0.00..355.41 rows=9834 width=70) (actual time=0.017..45.560 rows=9834 loops=1)"
+"        Filter: is_location_exact"
+"        Rows Removed by Filter: 1707"
+"  ->  Hash  (cost=10.00..10.00 rows=1 width=98) (actual time=0.710..0.711 rows=45 loops=1)"
+"        Buckets: 1024  Batches: 1  Memory Usage: 11kB"
+"        ->  Seq Scan on "Geolocation"  (cost=0.00..10.00 rows=1 width=98) (actual time=0.006..0.688 rows=45 loops=1)"
+"Planning Time: 2.191 ms"
+"Execution Time: 53.729 ms"
+
+
+
+Create INDEX Neighbourhood_INDEX
+ON "Geolocation"(properties_neighbourhood);
+
+
+
+"Hash Join  (cost=9.01..499.64 rows=9834 width=139) (actual time=0.080..9.676 rows=9834 loops=1)"
+"  Hash Cond: (("Location".neighbourhood_cleansed)::text = ("Geolocation".properties_neighbourhood)::text)"
+"  ->  Seq Scan on "Location"  (cost=0.00..355.41 rows=9834 width=70) (actual time=0.009..4.131 rows=9834 loops=1)"
+"        Filter: is_location_exact"
+"        Rows Removed by Filter: 1707"
+"  ->  Hash  (cost=8.45..8.45 rows=45 width=98) (actual time=0.061..0.062 rows=45 loops=1)"
+"        Buckets: 1024  Batches: 1  Memory Usage: 11kB"
+"        ->  Seq Scan on "Geolocation"  (cost=0.00..8.45 rows=45 width=98) (actual time=0.003..0.042 rows=45 loops=1)"
+"Planning Time: 0.860 ms"
+"Execution Time: 11.549 ms"
+
+
+
+
+4)Query  6 without:14.071ms
+With: 3.622ms
+
+
+"Limit  (cost=0.29..367.16 rows=100 width=100) (actual time=0.027..13.445 rows=100 loops=1)"
+"  ->  Nested Loop  (cost=0.29..10800.98 rows=2944 width=100) (actual time=0.026..13.399 rows=100 loops=1)"
+"        ->  Seq Scan on "Price"  (cost=0.00..309.26 rows=3847 width=40) (actual time=0.010..0.123 rows=206 loops=1)"
+"              Filter: (price <= 110.00)"
+"              Rows Removed by Filter: 28"
+"        ->  Index Scan using ix_find_id_for_listing on "Listing"  (cost=0.29..2.73 rows=1 width=68) (actual time=0.064..0.064 rows=0 loops=206)"
+"              Index Cond: ((id)::text = ("Price".listing_id)::text)"
+"              Filter: instant_bookable"
+"              Rows Removed by Filter: 1"
+"Planning Time: 6.387 ms"
+"Execution Time: 14.071 ms"
+
+
+Create INDEX FOR_OH_FOR
+ON "Price"(listing_id);
+
+"Limit  (cost=0.29..222.98 rows=100 width=100) (actual time=0.021..3.574 rows=100 loops=1)"
+"  ->  Nested Loop  (cost=0.29..6556.49 rows=2944 width=100) (actual time=0.019..3.530 rows=100 loops=1)"
+"        ->  Seq Scan on "Listing"  (cost=0.00..2930.41 rows=8832 width=68) (actual time=0.007..0.330 rows=119 loops=1)"
+"              Filter: instant_bookable"
+"              Rows Removed by Filter: 115"
+"        ->  Index Scan using for_oh_for on "Price"  (cost=0.29..0.40 rows=1 width=40) (actual time=0.026..0.026 rows=1 loops=119)"
+"              Index Cond: ((listing_id)::text = ("Listing".id)::text)"
+"              Filter: (price <= 110.00)"
+"              Rows Removed by Filter: 0"
+"Planning Time: 0.961 ms"
+"Execution Time: 3.622 ms"
+
+
+
+5)Query 7 Without: 2.322ms
+With:2.310 ms
+ 
+
+"HashAggregate  (cost=385.55..387.26 rows=171 width=17) (actual time=2.279..2.288 rows=29 loops=1)"
+"  Group Key: "Location".neighbourhood, "Location".city, "Location".is_location_exact"
+"  ->  Seq Scan on "Location"  (cost=0.00..384.26 rows=171 width=17) (actual time=0.008..2.060 rows=510 loops=1)"
+"        Filter: ((NOT is_location_exact) AND ((city)::text = 'Athens'::text))"
+"        Rows Removed by Filter: 11031"
+"Planning Time: 0.168 ms"
+"Execution Time: 2.322 ms"
+
+CREATE INDEX LAST_INDEX
+ON "Location"(neighbourhood);
+
+
+"HashAggregate  (cost=385.55..387.26 rows=171 width=17) (actual time=2.261..2.270 rows=29 loops=1)"
+"  Group Key: "Location".neighbourhood, "Location".city, "Location".is_location_exact"
+"  ->  Seq Scan on "Location"  (cost=0.00..384.26 rows=171 width=17) (actual time=0.010..2.040 rows=510 loops=1)"
+"        Filter: ((NOT is_location_exact) AND ((city)::text = 'Athens'::text))"
+"        Rows Removed by Filter: 11031"
+"Planning Time: 0.206 ms"
+"Execution Time: 2.310 ms"
